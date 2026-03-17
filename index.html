@@ -1292,15 +1292,43 @@ function stageFromSMS(){
   toast('Staged from SMS ✓','success');
 }
 
-function checkSharedSMS(){
+async function checkSharedSMS(){
   const params = new URLSearchParams(window.location.search);
   const shared = params.get('text') || params.get('sms');
   if(!shared) return;
   history.replaceState({},'',window.location.pathname);
-  const decoded = decodeURIComponent(shared);
-  document.getElementById('smsText').value = decoded;
+  const smsText = decodeURIComponent(shared).trim();
+
+  // Fill textarea as fallback if auto-stage fails
+  document.getElementById('smsText').value = smsText;
   showScreen('tracker', document.querySelectorAll('.nav-btn')[1]);
-  toast('SMS received — tap Parse to extract expense','');
+  toast('SMS received — auto-parsing…','');
+
+  // Auto-parse
+  const apiKey = localStorage.getItem('financeOS_apiKey');
+  let result;
+  try {
+    if(apiKey) result = await parseSMSWithAI(smsText, apiKey);
+    else result = parseSMSWithRegex(smsText);
+  } catch(e) {
+    result = parseSMSWithRegex(smsText);
+  }
+
+  // Auto-stage if valid debit
+  if(result && !result.error && result.isDebit !== false && result.amount > 0){
+    if(!state.pending) state.pending = [];
+    state.pending.push({id:Date.now(), cat:result.cat, amt:result.amount, note:result.note||'', ts:new Date().toISOString()});
+    save();
+    document.getElementById('smsText').value = '';
+    document.getElementById('smsResultArea').style.display = 'none';
+    renderTracker();
+    renderDashboard();
+    const m = CAT_META[result.cat]||CAT_META.other;
+    toast(`Auto-staged: ${fmt(result.amount)} ${m.icon} ${result.note||m.label}`, 'success');
+  } else {
+    // Leave SMS in textarea for manual review
+    toast('Could not auto-parse — review manually','');
+  }
 }
 
 // ═══════════════════════════════════════
