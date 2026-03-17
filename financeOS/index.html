@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3b9eff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Finance OS">
+<title>Finance OS — Varun</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#05080f;--s1:#0b0f1a;--s2:#10151f;--s3:#161c2a;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);
+  --green:#00e5a0;--blue:#3b9eff;--orange:#ff8c42;--red:#ff4f6a;
+  --yellow:#ffd166;--purple:#9b6dff;--pink:#ff6db4;
+  --text:#e2eaf5;--muted:#4a5568;--muted2:#2d3748;
+  --mono:'Space Mono',monospace;--sans:'Outfit',sans-serif;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden;padding-bottom:calc(70px + var(--safe-bottom));}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(59,158,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(59,158,255,0.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:100;
+  background:rgba(11,15,26,0.95);backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);
+  display:flex;padding-bottom:var(--safe-bottom);
+}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 4px;cursor:pointer;border:none;background:none;color:var(--muted);transition:color 0.2s;font-family:var(--sans);}
+.nav-btn.active{color:var(--blue);}
+.nav-btn svg{width:20px;height:20px;}
+.nav-label{font-size:0.58rem;font-family:var(--mono);letter-spacing:0.04em;}
+
+/* ── SCREENS ── */
+.screen{display:none;padding:16px;position:relative;z-index:1;max-width:900px;margin:0 auto;}
+.screen.active{display:block;}
+
+/* ── TOP BAR ── */
+.topbar{display:flex;justify-content:space-between;align-items:center;padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--border);}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;font-size:1rem;}
+.brand-name{font-size:1.1rem;font-weight:800;letter-spacing:-0.02em;}
+.brand-sub{font-size:0.55rem;font-family:var(--mono);color:var(--muted);margin-top:1px;}
+.install-btn{background:rgba(59,158,255,0.1);border:1px solid rgba(59,158,255,0.25);color:var(--blue);font-family:var(--mono);font-size:0.6rem;padding:7px 12px;border-radius:20px;cursor:pointer;letter-spacing:0.04em;display:none;}
+
+/* ── CARDS ── */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;}
+.card-title{font-size:0.58rem;font-family:var(--mono);color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;display:flex;align-items:center;gap:7px;margin-bottom:14px;}
+.ctd{width:5px;height:5px;border-radius:50%;}
+
+/* ── KPI GRID ── */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.kpi{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:14px;position:relative;overflow:hidden;}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kpi-c,var(--blue));}
+.kpi-label{font-size:0.55rem;font-family:var(--mono);color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:7px;}
+.kpi-val{font-size:1.2rem;font-weight:800;color:var(--kpi-c,var(--text));}
+.kpi-sub{font-size:0.6rem;font-family:var(--mono);color:var(--muted);margin-top:4px;}
+
+/* ── PHASE STRIP ── */
+.phase-strip{display:flex;gap:0;border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:12px;}
+.ph{flex:1;padding:10px 12px;text-align:center;font-size:0.55rem;font-family:var(--mono);}
+.ph.done{background:rgba(74,85,104,0.15);color:var(--muted);}
+.ph.now{background:rgba(255,140,66,0.08);color:var(--orange);border-right:1px solid rgba(255,140,66,0.2);}
+.ph.next{background:rgba(59,158,255,0.06);color:var(--blue);border-right:1px solid rgba(59,158,255,0.15);}
+.ph.future{background:rgba(0,229,160,0.05);color:var(--green);}
+.ph-period{font-weight:700;font-size:0.65rem;margin-bottom:2px;}
+
+/* ── GOALS ── */
+.goal-item{background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;}
+.goal-item.priority{border-color:rgba(255,140,66,0.25);}
+.goal-item.locked{border-color:rgba(155,109,255,0.2);opacity:0.75;}
+.goal-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.goal-info{display:flex;align-items:center;gap:9px;}
+.goal-emoji{font-size:1.1rem;}
+.goal-title{font-size:0.85rem;font-weight:700;}
+.goal-sub{font-size:0.58rem;font-family:var(--mono);color:var(--muted);margin-top:1px;}
+.badge{font-size:0.5rem;font-family:var(--mono);padding:3px 8px;border-radius:99px;letter-spacing:0.05em;}
+.badge.hot{background:rgba(255,140,66,0.15);color:var(--orange);border:1px solid rgba(255,140,66,0.3);}
+.badge.on{background:rgba(0,229,160,0.1);color:var(--green);border:1px solid rgba(0,229,160,0.2);}
+.badge.lock{background:rgba(155,109,255,0.1);color:var(--purple);border:1px solid rgba(155,109,255,0.2);}
+.goal-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
+.gs-val{font-size:0.88rem;font-weight:800;}
+.gs-label{font-size:0.52rem;font-family:var(--mono);color:var(--muted);margin-top:1px;}
+.gbar{background:var(--muted2);border-radius:99px;height:5px;overflow:hidden;margin-bottom:4px;}
+.gbar-fill{height:100%;border-radius:99px;}
+.gbar-meta{display:flex;justify-content:space-between;font-family:var(--mono);font-size:0.58rem;color:var(--muted);}
+.lock-note{background:rgba(155,109,255,0.07);border:1px solid rgba(155,109,255,0.12);border-radius:7px;padding:8px;text-align:center;font-size:0.6rem;font-family:var(--mono);color:var(--purple);margin-bottom:8px;}
+.tip{background:var(--s3);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:9px 12px;font-size:0.68rem;color:var(--muted);line-height:1.6;margin-top:8px;}
+.tip strong{color:var(--text);}
+.tip.warn{border-left-color:var(--orange);}
+.tip.good{border-left-color:var(--green);}
+.tip.lock{border-left-color:var(--purple);}
+
+/* ── MONTHLY TRACKER ── */
+.month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.month-nav-btn{background:var(--s2);border:1px solid var(--border);color:var(--text);width:36px;height:36px;border-radius:10px;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;}
+.month-nav-title{font-size:1rem;font-weight:800;}
+.month-nav-sub{font-size:0.58rem;font-family:var(--mono);color:var(--muted);text-align:center;margin-top:2px;}
+
+.tracker-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.ts-cell{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;}
+.ts-val{font-size:1rem;font-weight:800;}
+.ts-label{font-size:0.55rem;font-family:var(--mono);color:var(--muted);margin-top:3px;}
+
+/* ADD EXPENSE */
+.add-exp-form{background:var(--s2);border:1px solid var(--border2);border-radius:12px;padding:14px;margin-bottom:12px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.form-field{display:flex;flex-direction:column;gap:4px;}
+.form-label{font-size:0.58rem;font-family:var(--mono);color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;}
+.form-input{background:var(--s3);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:0.82rem;padding:9px 11px;border-radius:8px;outline:none;transition:border-color 0.2s;width:100%;}
+.form-input:focus{border-color:var(--blue);}
+select.form-input option{background:var(--s3);}
+.form-full{grid-column:span 2;}
+.add-btn{width:100%;background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;border:none;border-radius:9px;padding:11px;font-family:var(--sans);font-size:0.82rem;font-weight:700;cursor:pointer;margin-top:4px;transition:opacity 0.2s;}
+.add-btn:hover{opacity:0.88;}
+
+/* EXPENSE LIST */
+.exp-list{display:flex;flex-direction:column;gap:6px;}
+.exp-entry{display:flex;align-items:center;justify-content:space-between;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;}
+.ee-left{display:flex;align-items:center;gap:10px;}
+.ee-ico{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:0.9rem;flex-shrink:0;}
+.ee-name{font-size:0.8rem;font-weight:600;}
+.ee-cat{font-size:0.58rem;font-family:var(--mono);color:var(--muted);margin-top:1px;}
+.ee-right{display:flex;align-items:center;gap:10px;}
+.ee-amt{font-family:var(--mono);font-size:0.85rem;font-weight:700;}
+.del-btn{background:rgba(255,79,106,0.1);border:1px solid rgba(255,79,106,0.2);color:var(--red);width:26px;height:26px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.8rem;flex-shrink:0;}
+
+/* MONTH-ON-MONTH CHART */
+.mom-chart{margin-top:4px;}
+.mom-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.mom-month-label{font-family:var(--mono);font-size:0.6rem;color:var(--muted);width:28px;flex-shrink:0;}
+.mom-bar-wrap{flex:1;position:relative;}
+.mom-bar-track{background:var(--muted2);border-radius:99px;height:22px;overflow:hidden;position:relative;}
+.mom-bar-fill{height:100%;border-radius:99px;display:flex;align-items:center;padding-left:8px;min-width:30px;transition:width 0.6s ease;}
+.mom-bar-label{font-size:0.6rem;font-family:var(--mono);font-weight:700;color:rgba(255,255,255,0.9);white-space:nowrap;}
+.mom-saved{font-family:var(--mono);font-size:0.6rem;width:60px;text-align:right;flex-shrink:0;}
+.mom-saved.pos{color:var(--green);}
+.mom-saved.neg{color:var(--red);}
+
+/* BREAKDOWN DONUT (mini) */
+.cat-breakdown{display:flex;flex-direction:column;gap:6px;margin-top:4px;}
+.cb-row{display:flex;align-items:center;gap:8px;}
+.cb-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+.cb-name{font-size:0.72rem;flex:1;}
+.cb-bar-wrap{width:80px;}
+.cb-bar{height:4px;background:var(--muted2);border-radius:99px;overflow:hidden;}
+.cb-fill{height:100%;border-radius:99px;}
+.cb-amt{font-family:var(--mono);font-size:0.68rem;font-weight:700;width:60px;text-align:right;}
+
+/* SETTINGS */
+.settings-group{margin-bottom:16px;}
+.settings-title{font-size:0.65rem;font-family:var(--mono);color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);}
+.setting-row:last-child{border-bottom:none;}
+.setting-label{font-size:0.8rem;font-weight:600;}
+.setting-sub{font-size:0.6rem;font-family:var(--mono);color:var(--muted);margin-top:2px;}
+.setting-input{background:var(--s3);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:0.8rem;padding:7px 10px;border-radius:8px;outline:none;width:110px;text-align:right;}
+.setting-input:focus{border-color:var(--blue);}
+.save-settings-btn{width:100%;background:linear-gradient(135deg,var(--green),var(--blue));color:#fff;border:none;border-radius:10px;padding:12px;font-family:var(--sans);font-size:0.85rem;font-weight:700;cursor:pointer;margin-top:4px;}
+.danger-btn{width:100%;background:rgba(255,79,106,0.08);border:1px solid rgba(255,79,106,0.2);color:var(--red);border-radius:10px;padding:11px;font-family:var(--sans);font-size:0.82rem;font-weight:700;cursor:pointer;margin-top:8px;}
+
+/* TOASTS */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--s1);border:1px solid var(--border2);border-radius:10px;padding:10px 18px;font-size:0.75rem;font-family:var(--mono);color:var(--text);opacity:0;transition:all 0.3s;z-index:200;white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.success{border-color:rgba(0,229,160,0.3);color:var(--green);}
+.toast.error{border-color:rgba(255,79,106,0.3);color:var(--red);}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:32px 16px;color:var(--muted);}
+.empty-state .es-icon{font-size:2.5rem;margin-bottom:10px;opacity:0.4;}
+.empty-state p{font-size:0.75rem;font-family:var(--mono);}
+
+/* INSTALL BANNER */
+.install-banner{background:linear-gradient(135deg,rgba(59,158,255,0.08),rgba(155,109,255,0.06));border:1px solid rgba(59,158,255,0.2);border-radius:12px;padding:14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.ib-text{font-size:0.72rem;line-height:1.5;}
+.ib-text strong{color:var(--blue);}
+.ib-text p{color:var(--muted);font-size:0.62rem;font-family:var(--mono);margin-top:2px;}
+.ib-btn{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-family:var(--sans);font-size:0.75rem;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;}
+
+@media(min-width:600px){
+  .kpi-grid{grid-template-columns:repeat(4,1fr);}
+  .tracker-summary{grid-template-columns:repeat(5,1fr);}
+  .form-row{grid-template-columns:repeat(4,1fr);}
+  .form-full{grid-column:span 4;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- SCREEN: DASHBOARD -->
+<div class="screen active" id="screen-dashboard">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-icon">₹</div>
+      <div><div class="brand-name">Finance OS</div><div class="brand-sub" id="db-month-label">MARCH 2026</div></div>
+    </div>
+    <button class="install-btn" id="installBtn">⬇ Install App</button>
+  </div>
+
+  <!-- Install banner for Android -->
+  <div class="install-banner" id="installBanner" style="display:none">
+    <div class="ib-text">
+      <strong>Install Finance OS on Android</strong>
+      <p>Tap "Install" → works offline, feels native, home screen icon</p>
+    </div>
+    <button class="ib-btn" id="installBannerBtn">Install</button>
+  </div>
+
+  <!-- Phase strip -->
+  <div class="phase-strip">
+    <div class="ph done"><div class="ph-period">Jan–Mar</div>Build savings</div>
+    <div class="ph now"><div class="ph-period">Apr–Aug</div>🔥 iPhone Sprint</div>
+    <div class="ph next"><div class="ph-period">Aug</div>Buy + EMI</div>
+    <div class="ph future"><div class="ph-period">Sep+</div>📈 Invest</div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid" id="dashKpis"></div>
+
+  <!-- Goals -->
+  <div class="card">
+    <div class="card-title"><div class="ctd" style="background:var(--orange)"></div> Active Goals</div>
+    <div id="dashGoals"></div>
+  </div>
+
+  <!-- Month-on-month mini chart -->
+  <div class="card">
+    <div class="card-title"><div class="ctd" style="background:var(--blue)"></div> Month-on-Month Spending</div>
+    <div class="mom-chart" id="momChart"></div>
+  </div>
+</div>
+
+<!-- SCREEN: MONTHLY TRACKER -->
+<div class="screen" id="screen-tracker">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-icon" style="background:linear-gradient(135deg,var(--orange),var(--red))">📊</div>
+      <div><div class="brand-name">Monthly Tracker</div><div class="brand-sub">LOG YOUR EXPENSES</div></div>
+    </div>
+  </div>
+
+  <!-- Month navigation -->
+  <div class="month-nav">
+    <button class="month-nav-btn" onclick="changeMonth(-1)">‹</button>
+    <div style="text-align:center;">
+      <div class="month-nav-title" id="trackerMonthTitle">March 2026</div>
+      <div class="month-nav-sub" id="trackerMonthSub">0 entries</div>
+    </div>
+    <button class="month-nav-btn" onclick="changeMonth(1)">›</button>
+  </div>
+
+  <!-- Summary -->
+  <div class="tracker-summary" id="trackerSummary"></div>
+
+  <!-- Add expense form -->
+  <div class="add-exp-form">
+    <div class="card-title" style="margin-bottom:10px;"><div class="ctd" style="background:var(--green)"></div> Add Expense</div>
+    <div class="form-row">
+      <div class="form-field">
+        <div class="form-label">Category</div>
+        <select class="form-input" id="expCat">
+          <option value="bills">🏠 Bills</option>
+          <option value="food">🍱 Food</option>
+          <option value="travel">🚌 Travel</option>
+          <option value="petrol">⛽ Petrol</option>
+          <option value="emi">💻 EMI</option>
+          <option value="sip">📈 SIP/Invest</option>
+          <option value="subs">📱 Subscriptions</option>
+          <option value="iphone">📱 iPhone Savings</option>
+          <option value="shopping">🛍️ Shopping</option>
+          <option value="health">💊 Health</option>
+          <option value="entertainment">🎬 Entertainment</option>
+          <option value="other">💸 Other</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <div class="form-label">Amount (₹)</div>
+        <input class="form-input" id="expAmt" type="number" placeholder="0" inputmode="numeric">
+      </div>
+      <div class="form-field form-full">
+        <div class="form-label">Note (optional)</div>
+        <input class="form-input" id="expNote" type="text" placeholder="e.g. Swiggy dinner, Reliance bill...">
+      </div>
+    </div>
+    <button class="add-btn" onclick="addExpense()">+ Add Expense</button>
+  </div>
+
+  <!-- Expense list -->
+  <div class="card">
+    <div class="card-title"><div class="ctd" style="background:var(--red)"></div> This Month's Entries</div>
+    <div id="expList"></div>
+  </div>
+
+  <!-- Category breakdown -->
+  <div class="card">
+    <div class="card-title"><div class="ctd" style="background:var(--purple)"></div> Category Breakdown</div>
+    <div class="cat-breakdown" id="catBreakdown"></div>
+  </div>
+</div>
+
+<!-- SCREEN: ANALYSIS -->
+<div class="screen" id="screen-analysis">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-icon" style="background:linear-gradient(135deg,var(--purple),var(--pink))">📈</div>
+      <div><div class="brand-name">Analysis</div><div class="brand-sub">MONTH-ON-MONTH TRENDS</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="ctd" style="background:var(--blue)"></div> Spending vs Budget — All Months</div>
+    <div id="analysisChart"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="ctd" style="background:var(--green)"></div> iPhone Savings Progress</div>
+    <div id="iphoneProgress"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="ctd" style="background:var(--orange)"></div> Category Trends (all months)</div>
+    <div id="catTrends"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="ctd" style="background:var(--yellow)"></div> 50/30/20 Rule — This Month</div>
+    <div id="ruleCheck"></div>
+  </div>
+</div>
+
+<!-- SCREEN: SETTINGS -->
+<div class="screen" id="screen-settings">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-icon" style="background:linear-gradient(135deg,var(--muted),var(--muted2))">⚙️</div>
+      <div><div class="brand-name">Settings</div><div class="brand-sub">BUDGET & PROFILE</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="settings-group">
+      <div class="settings-title">Income</div>
+      <div class="setting-row">
+        <div><div class="setting-label">Monthly Salary</div><div class="setting-sub">Current take-home</div></div>
+        <input class="setting-input" id="setSalary" type="number" value="35000">
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Expected Appraisal %</div><div class="setting-sub">Post-August only</div></div>
+        <input class="setting-input" id="setAppraisal" type="number" value="7">
+      </div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-title">Fixed Monthly Budget</div>
+      <div class="setting-row">
+        <div><div class="setting-label">Bills & Utilities</div></div>
+        <input class="setting-input" id="setBills" type="number" value="10000">
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Food Budget</div></div>
+        <input class="setting-input" id="setFood" type="number" value="4000">
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Travelling</div></div>
+        <input class="setting-input" id="setTravel" type="number" value="3000">
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Petrol</div></div>
+        <input class="setting-input" id="setPetrol" type="number" value="3000">
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Laptop EMI</div></div>
+        <input class="setting-input" id="setEmi" type="number" value="2700">
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">SIP Investment</div></div>
+        <input class="setting-input" id="setSip" type="number" value="2000">
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Subscriptions</div></div>
+        <input class="setting-input" id="setSubs" type="number" value="1000">
+      </div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-title">iPhone Goal</div>
+      <div class="setting-row">
+        <div><div class="setting-label">iPhone 17 Price (₹)</div><div class="setting-sub">256GB expected price</div></div>
+        <input class="setting-input" id="setIphone" type="number" value="89999">
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Current Savings (₹)</div><div class="setting-sub">As of today</div></div>
+        <input class="setting-input" id="setSavings" type="number" value="30000">
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Monthly iPhone Saving</div><div class="setting-sub">Set aside from free cash</div></div>
+        <input class="setting-input" id="setSaveMo" type="number" value="4000">
+      </div>
+    </div>
+    <button class="save-settings-btn" onclick="saveSettings()">💾 Save Settings</button>
+    <button class="danger-btn" onclick="clearAllData()">🗑️ Clear All Data</button>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" onclick="showScreen('dashboard',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    <span class="nav-label">OVERVIEW</span>
+  </button>
+  <button class="nav-btn" onclick="showScreen('tracker',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/><circle cx="12" cy="12" r="9"/></svg>
+    <span class="nav-label">TRACKER</span>
+  </button>
+  <button class="nav-btn" onclick="showScreen('analysis',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    <span class="nav-label">ANALYSIS</span>
+  </button>
+  <button class="nav-btn" onclick="showScreen('settings',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    <span class="nav-label">SETTINGS</span>
+  </button>
+</nav>
+
+<script>
+// ═══════════════════════════════════════
+//  STATE & PERSISTENCE
+// ═══════════════════════════════════════
+const STORE = 'financeOS_v3';
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS_S = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+const CAT_META = {
+  bills:        {label:'Bills',         icon:'🏠', color:'#ff4f6a'},
+  food:         {label:'Food',          icon:'🍱', color:'#ff8c42'},
+  travel:       {label:'Travel',        icon:'🚌', color:'#ffd166'},
+  petrol:       {label:'Petrol',        icon:'⛽', color:'#00e5a0'},
+  emi:          {label:'Laptop EMI',    icon:'💻', color:'#3b9eff'},
+  sip:          {label:'SIP/Invest',    icon:'📈', color:'#9b6dff'},
+  subs:         {label:'Subscriptions', icon:'📱', color:'#ff6db4'},
+  iphone:       {label:'iPhone Fund',   icon:'🎯', color:'#ffd166'},
+  shopping:     {label:'Shopping',      icon:'🛍️', color:'#ff8c42'},
+  health:       {label:'Health',        icon:'💊', color:'#00e5a0'},
+  entertainment:{label:'Entertainment', icon:'🎬', color:'#9b6dff'},
+  other:        {label:'Other',         icon:'💸', color:'#4a5568'},
+};
+
+let state = {
+  settings:{
+    salary:35000, bills:10000, food:4000, travel:3000,
+    petrol:3000, emi:2700, sip:2000, subs:1000,
+    saveMo:4000, savings:30000, iphoneGoal:89999, appraisal:7
+  },
+  expenses:{}, // { "2026-03": [{id,cat,amt,note,ts},...] }
+};
+
+function load(){
+  try{
+    const d = localStorage.getItem(STORE);
+    if(d) state = JSON.parse(d);
+  }catch(e){}
+  syncSettingsUI();
+}
+function save(){
+  localStorage.setItem(STORE, JSON.stringify(state));
+}
+function fmt(n){ return '₹'+Math.round(n).toLocaleString('en-IN'); }
+
+// ═══════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════
+function showScreen(name, btn){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(name==='tracker') renderTracker();
+  if(name==='analysis') renderAnalysis();
+  if(name==='dashboard') renderDashboard();
+}
+
+// ═══════════════════════════════════════
+//  TRACKER
+// ═══════════════════════════════════════
+let trackerYear = new Date().getFullYear();
+let trackerMonth = new Date().getMonth(); // 0-indexed
+
+function monthKey(y,m){ return y+'-'+String(m+1).padStart(2,'0'); }
+function getEntries(y,m){ return state.expenses[monthKey(y,m)] || []; }
+
+function changeMonth(dir){
+  trackerMonth += dir;
+  if(trackerMonth < 0){ trackerMonth=11; trackerYear--; }
+  if(trackerMonth > 11){ trackerMonth=0; trackerYear++; }
+  renderTracker();
+}
+
+function addExpense(){
+  const cat = document.getElementById('expCat').value;
+  const amt = parseFloat(document.getElementById('expAmt').value);
+  const note = document.getElementById('expNote').value.trim();
+  if(!amt || amt<=0){ toast('Enter a valid amount','error'); return; }
+  const key = monthKey(trackerYear, trackerMonth);
+  if(!state.expenses[key]) state.expenses[key]=[];
+  state.expenses[key].push({id:Date.now(), cat, amt, note, ts:new Date().toISOString()});
+  save();
+  document.getElementById('expAmt').value='';
+  document.getElementById('expNote').value='';
+  renderTracker();
+  toast('Expense added ✓','success');
+}
+
+function deleteExpense(id){
+  const key = monthKey(trackerYear, trackerMonth);
+  state.expenses[key] = (state.expenses[key]||[]).filter(e=>e.id!==id);
+  save();
+  renderTracker();
+  toast('Deleted','');
+}
+
+function renderTracker(){
+  const entries = getEntries(trackerYear, trackerMonth);
+  const S = state.settings;
+  const budget = S.bills+S.food+S.travel+S.petrol+S.emi+S.sip+S.subs;
+  const total = entries.reduce((a,e)=>a+e.amt,0);
+  const diff = budget - total;
+  const iphoneSaved = entries.filter(e=>e.cat==='iphone').reduce((a,e)=>a+e.amt,0);
+
+  document.getElementById('trackerMonthTitle').textContent = MONTHS[trackerMonth]+' '+trackerYear;
+  document.getElementById('trackerMonthSub').textContent = entries.length+' entr'+(entries.length===1?'y':'ies');
+
+  // Summary
+  document.getElementById('trackerSummary').innerHTML = `
+    <div class="ts-cell"><div class="ts-val" style="color:var(--red)">${fmt(total)}</div><div class="ts-label">TOTAL SPENT</div></div>
+    <div class="ts-cell"><div class="ts-val" style="color:var(--blue)">${fmt(budget)}</div><div class="ts-label">BUDGET</div></div>
+    <div class="ts-cell"><div class="ts-val" style="color:${diff>=0?'var(--green)':'var(--red)'}">${diff>=0?'+':''}${fmt(diff)}</div><div class="ts-label">${diff>=0?'SURPLUS':'OVER'}</div></div>
+  `;
+
+  // Expense list
+  const listEl = document.getElementById('expList');
+  if(entries.length===0){
+    listEl.innerHTML = `<div class="empty-state"><div class="es-icon">📭</div><p>No expenses logged this month</p></div>`;
+  } else {
+    const sorted = [...entries].sort((a,b)=>b.id-a.id);
+    listEl.innerHTML = sorted.map(e=>{
+      const m = CAT_META[e.cat]||CAT_META.other;
+      return `<div class="exp-entry">
+        <div class="ee-left">
+          <div class="ee-ico" style="background:${m.color}18">${m.icon}</div>
+          <div>
+            <div class="ee-name">${e.note||m.label}</div>
+            <div class="ee-cat">${m.label} · ${new Date(e.ts).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</div>
+          </div>
+        </div>
+        <div class="ee-right">
+          <div class="ee-amt" style="color:${m.color}">${fmt(e.amt)}</div>
+          <button class="del-btn" onclick="deleteExpense(${e.id})">×</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Category breakdown
+  const catTotals = {};
+  entries.forEach(e=>{ catTotals[e.cat]=(catTotals[e.cat]||0)+e.amt; });
+  const maxCat = Math.max(...Object.values(catTotals),1);
+  const cbEl = document.getElementById('catBreakdown');
+  if(Object.keys(catTotals).length===0){
+    cbEl.innerHTML = `<div class="empty-state" style="padding:16px"><p>Add expenses to see breakdown</p></div>`;
+  } else {
+    cbEl.innerHTML = Object.entries(catTotals)
+      .sort((a,b)=>b[1]-a[1])
+      .map(([cat,amt])=>{
+        const m = CAT_META[cat]||CAT_META.other;
+        const pct = (amt/total*100).toFixed(0);
+        return `<div class="cb-row">
+          <div class="cb-dot" style="background:${m.color}"></div>
+          <div class="cb-name">${m.icon} ${m.label}</div>
+          <div class="cb-bar-wrap"><div class="cb-bar"><div class="cb-fill" style="width:${(amt/maxCat*100).toFixed(0)}%;background:${m.color}"></div></div></div>
+          <div style="font-family:var(--mono);font-size:0.58rem;color:var(--muted);width:28px;text-align:right">${pct}%</div>
+          <div class="cb-amt" style="color:${m.color}">${fmt(amt)}</div>
+        </div>`;
+      }).join('');
+  }
+}
+
+// ═══════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════
+function renderDashboard(){
+  const S = state.settings;
+  const now = new Date();
+  document.getElementById('db-month-label').textContent = MONTHS_S[now.getMonth()]+' '+now.getFullYear();
+
+  const budget = S.bills+S.food+S.travel+S.petrol+S.emi+S.sip+S.subs;
+  const free = S.salary - budget;
+  const projectedAtAug = S.savings + S.saveMo * 5;
+  const gapAtAug = Math.max(0, S.iphoneGoal - projectedAtAug);
+
+  // Current month spending
+  const curEntries = getEntries(now.getFullYear(), now.getMonth());
+  const curSpent = curEntries.reduce((a,e)=>a+e.amt,0);
+  const curSaved = curEntries.filter(e=>e.cat==='iphone').reduce((a,e)=>a+e.amt,0);
+
+  document.getElementById('dashKpis').innerHTML = `
+    <div class="kpi" style="--kpi-c:var(--green)">
+      <div class="kpi-label">Salary</div>
+      <div class="kpi-val">${fmt(S.salary)}</div>
+      <div class="kpi-sub">No appraisal</div>
+    </div>
+    <div class="kpi" style="--kpi-c:var(--red)">
+      <div class="kpi-label">This Month</div>
+      <div class="kpi-val">${fmt(curSpent)}</div>
+      <div class="kpi-sub">Logged so far</div>
+    </div>
+    <div class="kpi" style="--kpi-c:var(--orange)">
+      <div class="kpi-label">iPhone at Aug</div>
+      <div class="kpi-val">${fmt(projectedAtAug)}</div>
+      <div class="kpi-sub">Projected total</div>
+    </div>
+    <div class="kpi" style="--kpi-c:var(--blue)">
+      <div class="kpi-label">Free/Month</div>
+      <div class="kpi-val">${fmt(free)}</div>
+      <div class="kpi-sub">After all expenses</div>
+    </div>
+  `;
+
+  // Goals
+  const iphonePct = Math.min(100, S.savings/S.iphoneGoal*100);
+  document.getElementById('dashGoals').innerHTML = `
+    <div class="goal-item priority">
+      <div class="goal-header">
+        <div class="goal-info">
+          <div class="goal-emoji">📱</div>
+          <div>
+            <div class="goal-title">iPhone 17 (256GB)</div>
+            <div class="goal-sub">SAVING APR→AUG · NO APPRAISAL</div>
+          </div>
+        </div>
+        <div class="badge hot">🔥 SPRINT</div>
+      </div>
+      <div class="goal-stats">
+        <div><div class="gs-val" style="color:var(--orange)">${fmt(S.savings)}</div><div class="gs-label">SAVED NOW</div></div>
+        <div><div class="gs-val" style="color:var(--blue)">${fmt(projectedAtAug)}</div><div class="gs-label">AT AUG</div></div>
+        <div><div class="gs-val" style="color:${gapAtAug===0?'var(--green)':'var(--red)'}">${gapAtAug===0?'✅ DONE':fmt(gapAtAug)}</div><div class="gs-label">EMI NEEDED</div></div>
+      </div>
+      <div class="gbar"><div class="gbar-fill" style="width:${iphonePct.toFixed(1)}%;background:linear-gradient(90deg,#ff8c42,#ff4f6a)"></div></div>
+      <div class="gbar-meta"><span>${iphonePct.toFixed(0)}% funded</span><span>${fmt(S.iphoneGoal)} goal</span></div>
+      <div class="tip warn">
+        <strong>Aug plan:</strong> Down payment ${fmt(Math.max(0,projectedAtAug-20000))} + 12-mo no-cost EMI ≈ ${fmt(Math.ceil(gapAtAug/12))}/mo. Keep ₹20k buffer untouched.
+      </div>
+    </div>
+
+    <div class="goal-item locked">
+      <div class="goal-header">
+        <div class="goal-info">
+          <div class="goal-emoji">🛡️</div>
+          <div><div class="goal-title">Emergency Fund</div><div class="goal-sub">UNLOCKS SEP 2026</div></div>
+        </div>
+        <div class="badge lock">🔒 POST-AUG</div>
+      </div>
+      <div class="lock-note">🔒 Starts September 2026 · ₹2,000/mo from appraisal increment</div>
+      <div class="gbar"><div class="gbar-fill" style="width:0%;background:linear-gradient(90deg,#00e5a0,#3b9eff)"></div></div>
+      <div class="gbar-meta"><span>0% · ₹0 saved</span><span>₹77,100 target</span></div>
+    </div>
+
+    <div class="goal-item locked">
+      <div class="goal-header">
+        <div class="goal-info">
+          <div class="goal-emoji">📈</div>
+          <div><div class="goal-title">Upgrade SIP → ₹5,000</div><div class="goal-sub">UNLOCKS SEP 2026</div></div>
+        </div>
+        <div class="badge lock">🔒 POST-AUG</div>
+      </div>
+      <div class="lock-note">🔒 Starts September 2026 · Use appraisal increment + laptop EMI savings</div>
+      <div class="gbar"><div class="gbar-fill" style="width:40%;background:linear-gradient(90deg,#9b6dff,#3b9eff)"></div></div>
+      <div class="gbar-meta"><span>${fmt(S.sip)}/mo now</span><span>₹5,000/mo target</span></div>
+    </div>
+  `;
+
+  // MoM chart
+  renderMoMChart();
+}
+
+function renderMoMChart(){
+  const S = state.settings;
+  const budget = S.bills+S.food+S.travel+S.petrol+S.emi+S.sip+S.subs;
+  const now = new Date();
+  const months = [];
+  for(let i=5;i>=0;i--){
+    let m = now.getMonth()-i;
+    let y = now.getFullYear();
+    if(m<0){m+=12;y--;}
+    const entries = getEntries(y,m);
+    const spent = entries.reduce((a,e)=>a+e.amt,0);
+    months.push({label:MONTHS_S[m], spent, budget, y, m});
+  }
+  const maxVal = Math.max(...months.map(x=>Math.max(x.spent,x.budget)), budget);
+  const el = document.getElementById('momChart');
+  if(months.every(m=>m.spent===0)){
+    el.innerHTML = `<div class="empty-state" style="padding:24px"><div class="es-icon">📊</div><p>Log expenses to see trends</p></div>`;
+    return;
+  }
+  el.innerHTML = months.map(m=>{
+    const w = maxVal>0 ? (m.spent/maxVal*100).toFixed(1) : 0;
+    const diff = m.budget - m.spent;
+    const color = m.spent <= m.budget*0.7 ? 'var(--green)' : m.spent <= m.budget ? 'var(--orange)' : 'var(--red)';
+    return `<div class="mom-row">
+      <div class="mom-month-label">${m.label}</div>
+      <div class="mom-bar-wrap">
+        <div class="mom-bar-track">
+          <div class="mom-bar-fill" style="width:${w}%;background:${color}">
+            <span class="mom-bar-label">${m.spent>0?fmt(m.spent):''}</span>
+          </div>
+        </div>
+      </div>
+      <div class="mom-saved ${diff>=0?'pos':'neg'}">${m.spent===0?'—':(diff>=0?'+':'')+fmt(diff)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+//  ANALYSIS
+// ═══════════════════════════════════════
+function renderAnalysis(){
+  const S = state.settings;
+  const budget = S.bills+S.food+S.travel+S.petrol+S.emi+S.sip+S.subs;
+  const now = new Date();
+
+  // All months with data
+  const allMonths = [];
+  for(let i=11;i>=0;i--){
+    let m = now.getMonth()-i; let y = now.getFullYear();
+    if(m<0){m+=12;y--;}
+    const entries = getEntries(y,m);
+    const spent = entries.reduce((a,e)=>a+e.amt,0);
+    const iphoneSaved = entries.filter(e=>e.cat==='iphone').reduce((a,e)=>a+e.amt,0);
+    allMonths.push({label:MONTHS_S[m], spent, budget, iphoneSaved, entries, y, m});
+  }
+  const withData = allMonths.filter(x=>x.spent>0);
+
+  // Spending vs budget chart
+  const maxV = Math.max(...allMonths.map(x=>Math.max(x.spent,budget)),budget);
+  const acEl = document.getElementById('analysisChart');
+  if(withData.length===0){
+    acEl.innerHTML = `<div class="empty-state" style="padding:24px"><div class="es-icon">📊</div><p>No data yet — log expenses in Tracker</p></div>`;
+  } else {
+    acEl.innerHTML = allMonths.map(m=>{
+      const spentW = maxV>0?(m.spent/maxV*85).toFixed(1):0;
+      const budgetW = (budget/maxV*85).toFixed(1);
+      const over = m.spent > budget;
+      const color = over?'var(--red)':m.spent>budget*0.85?'var(--orange)':'var(--blue)';
+      return `<div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-family:var(--mono);font-size:0.62rem;color:var(--muted)">${m.label} '${String(m.y).slice(-2)}</span>
+          <span style="font-family:var(--mono);font-size:0.62rem;color:${m.spent===0?'var(--muted)':color}">${m.spent===0?'—':fmt(m.spent)}</span>
+        </div>
+        <div style="background:var(--muted2);border-radius:99px;height:8px;overflow:hidden;position:relative;">
+          <div style="position:absolute;left:${budgetW}%;top:0;bottom:0;width:1.5px;background:rgba(255,255,255,0.2);z-index:2;"></div>
+          <div style="height:100%;width:${spentW}%;background:${color};border-radius:99px;transition:width 0.5s;"></div>
+        </div>
+      </div>`;
+    }).join('')+`<div style="font-family:var(--mono);font-size:0.58rem;color:var(--muted);margin-top:8px;">│ Budget line: ${fmt(budget)}/mo</div>`;
+  }
+
+  // iPhone savings progress
+  const totalIphoneSaved = S.savings + withData.reduce((a,m)=>a+m.iphoneSaved,0);
+  const iphPct = Math.min(100,totalIphoneSaved/S.iphoneGoal*100);
+  const projAtAug = S.savings + S.saveMo*5;
+  document.getElementById('iphoneProgress').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+      <div class="ts-cell"><div class="ts-val" style="color:var(--orange)">${fmt(S.savings)}</div><div class="ts-label">SAVED NOW</div></div>
+      <div class="ts-cell"><div class="ts-val" style="color:var(--blue)">${fmt(projAtAug)}</div><div class="ts-label">PROJ. AUG</div></div>
+      <div class="ts-cell"><div class="ts-val" style="color:var(--green)">${fmt(S.iphoneGoal)}</div><div class="ts-label">GOAL</div></div>
+    </div>
+    <div style="background:var(--muted2);border-radius:99px;height:10px;overflow:hidden;margin-bottom:6px;">
+      <div style="height:100%;width:${iphPct.toFixed(1)}%;background:linear-gradient(90deg,#ff8c42,#ff4f6a);border-radius:99px;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:0.62rem;color:var(--muted);">
+      <span>${iphPct.toFixed(0)}% funded (incl. savings)</span>
+      <span>5mo sprint → ${fmt(projAtAug)}</span>
+    </div>
+    <div class="tip warn" style="margin-top:10px;font-size:0.68rem;">
+      <strong>Aug projection:</strong> You'll have ${fmt(projAtAug)} at purchase. Down payment: ${fmt(Math.max(0,projAtAug-20000))}. Remaining ${fmt(Math.max(0,S.iphoneGoal-(projAtAug-20000)))} via 12-mo no-cost EMI ≈ ${fmt(Math.ceil(Math.max(0,S.iphoneGoal-(projAtAug-20000))/12))}/mo.
+    </div>
+  `;
+
+  // Category trends
+  const catAgg = {};
+  withData.forEach(m=>{
+    m.entries.forEach(e=>{
+      catAgg[e.cat]=(catAgg[e.cat]||0)+e.amt;
+    });
+  });
+  const totalAllCats = Object.values(catAgg).reduce((a,v)=>a+v,0)||1;
+  const ctEl = document.getElementById('catTrends');
+  if(Object.keys(catAgg).length===0){
+    ctEl.innerHTML = `<div class="empty-state" style="padding:16px"><p>No data yet</p></div>`;
+  } else {
+    const maxCat = Math.max(...Object.values(catAgg));
+    ctEl.innerHTML = Object.entries(catAgg).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>{
+      const m = CAT_META[cat]||CAT_META.other;
+      const pct = (amt/totalAllCats*100).toFixed(1);
+      return `<div class="cb-row" style="margin-bottom:8px;">
+        <div class="cb-dot" style="background:${m.color};width:10px;height:10px;"></div>
+        <div class="cb-name">${m.icon} ${m.label}</div>
+        <div class="cb-bar-wrap" style="width:100px;"><div class="cb-bar"><div class="cb-fill" style="width:${(amt/maxCat*100).toFixed(0)}%;background:${m.color}"></div></div></div>
+        <div style="font-family:var(--mono);font-size:0.58rem;color:var(--muted);width:32px;text-align:right">${pct}%</div>
+        <div class="cb-amt" style="color:${m.color}">${fmt(amt)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // 50/30/20 rule — current month
+  const curEntries = getEntries(now.getFullYear(), now.getMonth());
+  const needs = curEntries.filter(e=>['bills','food','travel','petrol','emi'].includes(e.cat)).reduce((a,e)=>a+e.amt,0);
+  const wants = curEntries.filter(e=>['subs','shopping','entertainment','other'].includes(e.cat)).reduce((a,e)=>a+e.amt,0);
+  const savings2 = curEntries.filter(e=>['sip','iphone','health'].includes(e.cat)).reduce((a,e)=>a+e.amt,0);
+  const sal = S.salary;
+  const rules = [
+    {label:'Needs (50% target)', val:needs, target:sal*0.5, color:'#ff4f6a'},
+    {label:'Wants (30% target)', val:wants, target:sal*0.3, color:'#ffd166'},
+    {label:'Savings/Invest (20%)', val:savings2, target:sal*0.2, color:'#00e5a0'},
+  ];
+  document.getElementById('ruleCheck').innerHTML = rules.map(r=>{
+    const pct = (r.val/sal*100).toFixed(1);
+    const over = r.val > r.target;
+    const isSav = r.label.includes('Savings');
+    const status = over ? (isSav?`✅ ${pct}% — great!`:`⚠ ${pct}% — over by ${fmt(r.val-r.target)}`) : `✓ ${pct}% — on track`;
+    const color = over?(isSav?'var(--green)':'var(--red)'):'var(--green)';
+    return `<div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+        <span style="font-size:0.75rem;font-weight:600">${r.label}</span>
+        <span style="font-family:var(--mono);font-size:0.62rem;color:var(--muted)">${fmt(r.val)} / ${fmt(r.target)}</span>
+      </div>
+      <div style="background:var(--muted2);border-radius:99px;height:8px;overflow:hidden;">
+        <div style="height:100%;width:${Math.min(100,pct)}%;background:${r.color};border-radius:99px;"></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:0.6rem;color:${color};margin-top:4px;">${status}</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════
+function syncSettingsUI(){
+  const s = state.settings;
+  document.getElementById('setSalary').value = s.salary;
+  document.getElementById('setAppraisal').value = s.appraisal;
+  document.getElementById('setBills').value = s.bills;
+  document.getElementById('setFood').value = s.food;
+  document.getElementById('setTravel').value = s.travel;
+  document.getElementById('setPetrol').value = s.petrol;
+  document.getElementById('setEmi').value = s.emi;
+  document.getElementById('setSip').value = s.sip;
+  document.getElementById('setSubs').value = s.subs;
+  document.getElementById('setIphone').value = s.iphoneGoal;
+  document.getElementById('setSavings').value = s.savings;
+  document.getElementById('setSaveMo').value = s.saveMo;
+}
+
+function saveSettings(){
+  state.settings = {
+    salary:    parseInt(document.getElementById('setSalary').value)||35000,
+    appraisal: parseInt(document.getElementById('setAppraisal').value)||7,
+    bills:     parseInt(document.getElementById('setBills').value)||10000,
+    food:      parseInt(document.getElementById('setFood').value)||4000,
+    travel:    parseInt(document.getElementById('setTravel').value)||3000,
+    petrol:    parseInt(document.getElementById('setPetrol').value)||3000,
+    emi:       parseInt(document.getElementById('setEmi').value)||2700,
+    sip:       parseInt(document.getElementById('setSip').value)||2000,
+    subs:      parseInt(document.getElementById('setSubs').value)||1000,
+    iphoneGoal:parseInt(document.getElementById('setIphone').value)||89999,
+    savings:   parseInt(document.getElementById('setSavings').value)||30000,
+    saveMo:    parseInt(document.getElementById('setSaveMo').value)||4000,
+  };
+  save();
+  toast('Settings saved ✓','success');
+  renderDashboard();
+}
+
+function clearAllData(){
+  if(!confirm('Clear all expense data? Settings will be kept.')) return;
+  state.expenses = {};
+  save();
+  toast('Data cleared','');
+  renderTracker();
+  renderDashboard();
+}
+
+// ═══════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════
+function toast(msg, type){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show'+(type?' '+type:'');
+  setTimeout(()=>{ t.className='toast'; },2200);
+}
+
+// ═══════════════════════════════════════
+//  PWA INSTALL
+// ═══════════════════════════════════════
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBanner').style.display='flex';
+  document.getElementById('installBtn').style.display='block';
+});
+
+function triggerInstall(){
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(r=>{
+    if(r.outcome==='accepted') toast('Installing Finance OS...','success');
+    deferredPrompt=null;
+    document.getElementById('installBanner').style.display='none';
+  });
+}
+document.getElementById('installBtn').addEventListener('click', triggerInstall);
+document.getElementById('installBannerBtn').addEventListener('click', triggerInstall);
+
+window.addEventListener('appinstalled',()=>{
+  toast('Installed! Find Finance OS on home screen 🎉','success');
+  document.getElementById('installBanner').style.display='none';
+});
+
+// ═══════════════════════════════════════
+//  SERVICE WORKER
+// ═══════════════════════════════════════
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+
+// ═══════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════
+load();
+renderDashboard();
+</script>
+</body>
+</html>
