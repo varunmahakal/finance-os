@@ -174,6 +174,17 @@ select.form-input option{background:var(--s3);}
 .sms-msg.err{color:var(--red);background:rgba(255,79,106,0.07);border:1px solid rgba(255,79,106,0.15);}
 .sms-msg.warn{color:var(--orange);background:rgba(255,140,66,0.07);border:1px solid rgba(255,140,66,0.15);}
 .sms-powered{font-size:0.52rem;font-family:var(--mono);color:var(--muted);text-align:right;margin-top:6px;}
+.sms-paste-btn{background:rgba(59,158,255,0.1);border:1px solid rgba(59,158,255,0.25);color:var(--blue);border-radius:8px;padding:9px 12px;font-family:var(--mono);font-size:0.7rem;cursor:pointer;white-space:nowrap;}
+.sms-paste-btn:hover{background:rgba(59,158,255,0.18);}
+
+/* DASHBOARD PENDING WIDGET */
+.dash-pend-widget{background:linear-gradient(135deg,rgba(255,140,66,0.08),rgba(255,79,106,0.04));border:1px solid rgba(255,140,66,0.35);border-radius:14px;padding:14px;margin-bottom:12px;}
+.dpw-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.dpw-title{font-size:0.58rem;font-family:var(--mono);color:var(--orange);letter-spacing:0.1em;text-transform:uppercase;display:flex;align-items:center;gap:7px;}
+.dpw-count{background:rgba(255,140,66,0.15);color:var(--orange);border:1px solid rgba(255,140,66,0.3);padding:3px 9px;border-radius:99px;font-size:0.52rem;font-family:var(--mono);font-weight:700;}
+.dpw-review-btn{background:var(--orange);color:#05080f;border:none;border-radius:8px;padding:6px 13px;font-family:var(--mono);font-size:0.62rem;font-weight:700;cursor:pointer;letter-spacing:0.02em;}
+.dpw-item{display:flex;align-items:center;justify-content:space-between;background:rgba(255,140,66,0.06);border:1px solid rgba(255,140,66,0.12);border-radius:8px;padding:8px 11px;margin-bottom:5px;}
+.dpw-more{font-family:var(--mono);font-size:0.6rem;color:var(--muted);text-align:center;padding-top:4px;}
 
 /* MONTH-ON-MONTH CHART */
 .mom-chart{margin-top:4px;}
@@ -267,6 +278,9 @@ select.form-input option{background:var(--s3);}
     <div class="ph future"><div class="ph-period">Sep+</div>📈 Invest</div>
   </div>
 
+  <!-- Pending alert widget -->
+  <div id="dashPendingCard"></div>
+
   <!-- KPIs -->
   <div class="kpi-grid" id="dashKpis"></div>
 
@@ -349,6 +363,7 @@ select.form-input option{background:var(--s3);}
     <textarea class="sms-textarea" id="smsText" placeholder="Paste SMS here…&#10;e.g. Rs.350.00 debited from A/c **1234 at SWIGGY on 17-Mar-26. Avl Bal: Rs.8,450.00"></textarea>
     <div class="sms-btn-row">
       <button class="sms-parse-btn" id="smsParseBtn" onclick="parseSMS()">🔍 Parse SMS</button>
+      <button class="sms-paste-btn" onclick="pasteFromClipboard()">📋 Paste</button>
       <button class="sms-clear-btn" onclick="document.getElementById('smsText').value='';document.getElementById('smsResultArea').style.display='none'">Clear</button>
     </div>
     <div id="smsResultArea" style="display:none"></div>
@@ -768,6 +783,31 @@ function renderDashboard(){
   const now = new Date();
   document.getElementById('db-month-label').textContent = MONTHS_S[now.getMonth()]+' '+now.getFullYear();
 
+  // Dashboard pending widget
+  const pendWidget = document.getElementById('dashPendingCard');
+  const pend = state.pending || [];
+  if(pend.length === 0){
+    pendWidget.innerHTML = '';
+  } else {
+    const pendTotal = pend.reduce((a,e)=>a+e.amt, 0);
+    const preview = pend.slice(0,3);
+    const more = pend.length - 3;
+    pendWidget.innerHTML = `<div class="dash-pend-widget">
+      <div class="dpw-header">
+        <div class="dpw-title"><div class="ctd" style="background:var(--orange)"></div> Pending Review <span class="dpw-count">${pend.length} staged</span></div>
+        <button class="dpw-review-btn" onclick="showScreen('tracker',document.querySelectorAll('.nav-btn')[1])">Review All →</button>
+      </div>
+      ${preview.map(e=>{
+        const m = CAT_META[e.cat]||CAT_META.other;
+        return `<div class="dpw-item">
+          <div style="display:flex;align-items:center;gap:8px"><span>${m.icon}</span><span style="font-size:0.78rem;font-weight:600">${e.note||m.label}</span></div>
+          <span style="font-family:var(--mono);font-size:0.8rem;font-weight:700;color:${m.color}">${fmt(e.amt)}</span>
+        </div>`;
+      }).join('')}
+      <div class="dpw-more">${more > 0 ? `+${more} more · ` : ''}Total <strong style="color:var(--orange)">${fmt(pendTotal)}</strong></div>
+    </div>`;
+  }
+
   const budget = S.bills+S.food+S.travel+S.petrol+S.emi+S.sip+S.subs;
   const free = S.salary - budget;
   const projectedAtAug = S.savings + S.saveMo * 5;
@@ -1110,10 +1150,89 @@ async function parseSMSWithAI(smsText, apiKey){
 
 let _parsedSMS = null;
 
-async function parseSMS(){
-  const smsText = document.getElementById('smsText').value.trim();
-  if(!smsText){ toast('Paste an SMS first','error'); return; }
+async function pasteFromClipboard(){
+  try {
+    const text = await navigator.clipboard.readText();
+    if(!text.trim()){ toast('Clipboard is empty','error'); return; }
+    document.getElementById('smsText').value = text.trim();
+    // Auto-parse if it looks like a bank SMS
+    if(/(?:Rs\.?|INR|₹|debited|credited|a\/c|\bpaid\b|\bsent\b)/i.test(text)){
+      parseSMS();
+    }
+  } catch(e){
+    toast('Clipboard access denied — paste manually','error');
+  }
+}
 
+async function parseSMSBatch(blocks){
+  const btn = document.getElementById('smsParseBtn');
+  const area = document.getElementById('smsResultArea');
+  btn.textContent = `⏳ Parsing ${blocks.length}…`;
+  btn.disabled = true;
+  area.style.display = 'none';
+
+  const apiKey = localStorage.getItem('financeOS_apiKey');
+  const results = [];
+  let skipped = 0;
+
+  for(let i=0; i<blocks.length; i++){
+    const block = blocks[i];
+    btn.textContent = `⏳ ${i+1}/${blocks.length}…`;
+    let result;
+    try{
+      if(apiKey) result = await parseSMSWithAI(block, apiKey);
+      else result = parseSMSWithRegex(block);
+    }catch(e){
+      result = parseSMSWithRegex(block);
+    }
+    if(!result.error && result.isDebit !== false && result.amount > 0) results.push(result);
+    else skipped++;
+  }
+
+  btn.textContent = '🔍 Parse SMS';
+  btn.disabled = false;
+  area.style.display = 'block';
+
+  if(results.length === 0){
+    area.innerHTML = `<div class="sms-msg err">No valid expense SMS found across ${blocks.length} messages.</div>`;
+    return;
+  }
+
+  if(!state.pending) state.pending = [];
+  const ts = Date.now();
+  results.forEach((r,i)=>{
+    state.pending.push({id:ts+i, cat:r.cat, amt:r.amount, note:r.note||'', ts:new Date().toISOString()});
+  });
+  save();
+  document.getElementById('smsText').value = '';
+  renderTracker();
+  renderDashboard();
+
+  const batchTotal = results.reduce((a,r)=>a+r.amount, 0);
+  area.innerHTML = `
+    <div class="sms-result-box">
+      <div class="sms-result-row"><span class="sms-result-label">Staged</span><span style="color:var(--green);font-weight:800">${results.length} expense${results.length>1?'s':''}</span></div>
+      ${skipped>0?`<div class="sms-result-row"><span class="sms-result-label">Skipped</span><span style="color:var(--muted)">${skipped} (credits/unrecognized)</span></div>`:''}
+      <div class="sms-result-row"><span class="sms-result-label">Total</span><span style="color:var(--orange);font-weight:800">${fmt(batchTotal)}</span></div>
+    </div>
+    <div class="sms-msg" style="color:var(--green);background:rgba(0,229,160,0.07);border:1px solid rgba(0,229,160,0.15)">All staged — go to Pending Review to confirm.</div>
+  `;
+  document.getElementById('smsPoweredBy').textContent = apiKey ? `✦ batch parsed by Claude AI` : `✦ regex batch parser`;
+  toast(`${results.length} expense${results.length>1?'s':''} staged ✓`, 'success');
+}
+
+async function parseSMS(){
+  const rawText = document.getElementById('smsText').value.trim();
+  if(!rawText){ toast('Paste an SMS first','error'); return; }
+
+  // Detect multiple SMS blocks (separated by blank lines)
+  const blocks = rawText.split(/\n{2,}/).map(b=>b.trim()).filter(b=>b.length>0);
+  if(blocks.length > 1){
+    await parseSMSBatch(blocks);
+    return;
+  }
+
+  const smsText = rawText;
   const btn = document.getElementById('smsParseBtn');
   const area = document.getElementById('smsResultArea');
   btn.textContent = '⏳ Parsing…';
@@ -1132,7 +1251,6 @@ async function parseSMS(){
       document.getElementById('smsPoweredBy').textContent = '✦ regex parser · add Claude API key in Settings for AI';
     }
   }catch(e){
-    // fallback
     result = parseSMSWithRegex(smsText);
     document.getElementById('smsPoweredBy').textContent = '✦ AI unavailable — used regex fallback';
   }
