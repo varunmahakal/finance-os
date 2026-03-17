@@ -152,6 +152,29 @@ select.form-input option{background:var(--s3);}
 .stage-btn{width:100%;background:linear-gradient(135deg,var(--orange),var(--yellow));color:#05080f;border:none;border-radius:9px;padding:11px;font-family:var(--sans);font-size:0.82rem;font-weight:800;cursor:pointer;margin-top:4px;transition:opacity 0.2s;letter-spacing:0.01em;}
 .stage-btn:hover{opacity:0.88;}
 
+/* SMS IMPORT */
+.sms-card{background:var(--s1);border:1px solid rgba(155,109,255,0.28);border-radius:14px;padding:16px;margin-bottom:12px;}
+.sms-card-title{font-size:0.58rem;font-family:var(--mono);color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;display:flex;align-items:center;gap:7px;margin-bottom:8px;}
+.ai-badge{font-size:0.46rem;background:rgba(155,109,255,0.15);color:var(--purple);border:1px solid rgba(155,109,255,0.3);padding:2px 7px;border-radius:99px;letter-spacing:0.06em;}
+.sms-hint{font-size:0.62rem;font-family:var(--mono);color:var(--muted);margin-bottom:10px;line-height:1.5;}
+.sms-textarea{width:100%;background:var(--s3);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:0.73rem;padding:10px;border-radius:8px;outline:none;resize:vertical;min-height:88px;margin-bottom:8px;transition:border-color 0.2s;line-height:1.5;}
+.sms-textarea:focus{border-color:var(--purple);}
+.sms-btn-row{display:flex;gap:7px;}
+.sms-parse-btn{flex:1;background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff;border:none;border-radius:8px;padding:9px 12px;font-family:var(--mono);font-size:0.7rem;font-weight:700;cursor:pointer;letter-spacing:0.03em;transition:opacity 0.2s;}
+.sms-parse-btn:hover{opacity:0.88;}
+.sms-parse-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.sms-clear-btn{background:var(--s3);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:9px 12px;font-family:var(--mono);font-size:0.7rem;cursor:pointer;}
+.sms-result-box{background:var(--s2);border:1px solid rgba(155,109,255,0.2);border-radius:10px;padding:12px;margin-top:10px;}
+.sms-result-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:0.73rem;font-family:var(--mono);border-bottom:1px solid var(--border);}
+.sms-result-row:last-child{border-bottom:none;}
+.sms-result-label{color:var(--muted);}
+.sms-stage-detected{width:100%;background:rgba(0,229,160,0.1);border:1px solid rgba(0,229,160,0.3);color:var(--green);border-radius:8px;padding:9px;font-family:var(--mono);font-size:0.72rem;font-weight:700;cursor:pointer;margin-top:8px;letter-spacing:0.03em;}
+.sms-stage-detected:hover{background:rgba(0,229,160,0.18);}
+.sms-msg{font-family:var(--mono);font-size:0.7rem;margin-top:8px;padding:9px 12px;border-radius:8px;}
+.sms-msg.err{color:var(--red);background:rgba(255,79,106,0.07);border:1px solid rgba(255,79,106,0.15);}
+.sms-msg.warn{color:var(--orange);background:rgba(255,140,66,0.07);border:1px solid rgba(255,140,66,0.15);}
+.sms-powered{font-size:0.52rem;font-family:var(--mono);color:var(--muted);text-align:right;margin-top:6px;}
+
 /* MONTH-ON-MONTH CHART */
 .mom-chart{margin-top:4px;}
 .mom-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
@@ -315,6 +338,23 @@ select.form-input option{background:var(--s3);}
     <button class="stage-btn" onclick="stageExpense()">Stage for Review →</button>
   </div>
 
+  <!-- SMS Import -->
+  <div class="sms-card">
+    <div class="sms-card-title">
+      <div class="ctd" style="background:var(--purple)"></div>
+      Import from SMS
+      <span class="ai-badge">AI</span>
+    </div>
+    <p class="sms-hint">Paste a bank transaction SMS — AI extracts amount, merchant &amp; category automatically. On Android, share any SMS directly to Finance OS.</p>
+    <textarea class="sms-textarea" id="smsText" placeholder="Paste SMS here…&#10;e.g. Rs.350.00 debited from A/c **1234 at SWIGGY on 17-Mar-26. Avl Bal: Rs.8,450.00"></textarea>
+    <div class="sms-btn-row">
+      <button class="sms-parse-btn" id="smsParseBtn" onclick="parseSMS()">🔍 Parse SMS</button>
+      <button class="sms-clear-btn" onclick="document.getElementById('smsText').value='';document.getElementById('smsResultArea').style.display='none'">Clear</button>
+    </div>
+    <div id="smsResultArea" style="display:none"></div>
+    <div class="sms-powered" id="smsPoweredBy">✦ regex parser · add Claude API key in Settings for AI</div>
+  </div>
+
   <!-- Pending review queue -->
   <div class="pending-card" id="pendingCard" style="display:none">
     <div class="pending-header">
@@ -432,6 +472,16 @@ select.form-input option{background:var(--s3);}
       <div class="setting-row">
         <div><div class="setting-label">Monthly iPhone Saving</div><div class="setting-sub">Set aside from free cash</div></div>
         <input class="setting-input" id="setSaveMo" type="number" value="4000">
+      </div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-title">AI Features</div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Claude API Key</div>
+          <div class="setting-sub">For AI-powered SMS parsing · stored locally only</div>
+        </div>
+        <input class="setting-input" id="setApiKey" type="password" placeholder="sk-ant-..." style="width:130px;font-size:0.65rem;">
       </div>
     </div>
     <button class="save-settings-btn" onclick="saveSettings()">💾 Save Settings</button>
@@ -968,6 +1018,174 @@ function renderAnalysis(){
 }
 
 // ═══════════════════════════════════════
+//  SMS IMPORT
+// ═══════════════════════════════════════
+const CAT_KEYWORDS = {
+  food:          ['swiggy','zomato','domino','pizza','mcdonald','kfc','burger','restaurant','cafe','blinkit','zepto','bigbasket','grofer','dunzo','instamart','grocery','meal','lunch','dinner','biryani','eatclub','freshmenu','licious','milkbasket'],
+  travel:        ['uber','ola','rapido','auto','cab','taxi','metro','bus','irctc','redbus','makemytrip','goibibo','flight','indigo','spicejet','air india','vistara','akasa','yatra'],
+  petrol:        ['petrol','diesel','fuel','bpcl','hpcl','iocl','hp pump','bharat petroleum','hindustan petroleum','indian oil','shell','reliance fuel','pump'],
+  subs:          ['netflix','spotify','amazon prime','hotstar','disney','youtube premium','apple','google play','subscription','recharge','jio','airtel','vi ','vodafone','bsnl','tata play','dth','renewal'],
+  health:        ['apollo','medplus','netmeds','1mg','pharmeasy','medicine','pharma','clinic','doctor','hospital','lab','diagnostic','health','medical'],
+  shopping:      ['amazon','flipkart','myntra','ajio','nykaa','meesho','tata cliq','reliance digital','croma','vijay sales','decathlon'],
+  bills:         ['electricity','bescom','msedcl','tpddl','adani electric','bill','water','gas','cylinder','lpg','society','maintenance','property tax','broadband'],
+  entertainment: ['pvr','inox','cinepolis','bookmyshow','movie','ticket','event','steam','playstation'],
+  emi:           ['emi','loan repayment','equated monthly'],
+  sip:           ['sip','mutual fund','zerodha','groww','upstox','angel one','paytm money','mf','nse','bse'],
+  iphone:        ['iphone','apple store'],
+};
+
+function detectCategoryFromText(text){
+  const t = text.toLowerCase();
+  for(const [cat, kws] of Object.entries(CAT_KEYWORDS)){
+    if(kws.some(kw => t.includes(kw))) return cat;
+  }
+  return 'other';
+}
+
+function parseSMSWithRegex(smsText){
+  const t = smsText.replace(/\s+/g,' ').trim();
+
+  // Skip credits
+  const hasCredit = /\b(?:credited|received|refund(?:ed)?|cashback|reversed|salary credited)\b/i.test(t);
+  const hasDebit  = /\b(?:debited|deducted|paid|payment|spent|purchase|withdrawn|sent)\b/i.test(t);
+  if(hasCredit && !hasDebit) return {error:'Looks like a credit/refund — not an expense.'};
+
+  // Extract amount
+  let amount = null;
+  const amtRx = [
+    /(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)/i,
+    /([\d,]+(?:\.\d{1,2})?)\s*(?:Rs\.?|INR)/i,
+  ];
+  for(const rx of amtRx){
+    const m = t.match(rx);
+    if(m){ amount = parseFloat(m[1].replace(/,/g,'')); break; }
+  }
+  if(!amount || amount <= 0) return {error:'Could not find a transaction amount in this SMS.'};
+
+  // Extract merchant / payee
+  let merchant = null;
+  const merchantRx = [
+    /(?:paid to|payment to|transferred to|sent to|trf to)\s+([A-Za-z][A-Za-z0-9\s\-_\.@&'\/]{2,35}?)(?:\s+(?:via|on|using|ref|UPI|IMPS|NEFT|RTGS|for|avl|bal)|\s*[.,]|\s*$)/i,
+    /\bat\s+([A-Z][A-Z0-9\s\-_\.&'\/]{2,30}?)(?:\s+on\s+\d|\s*[.,]|\s*$)/,
+    /(?:Info|Remarks?|Narration)[:\s]+([A-Za-z][A-Za-z0-9\s\-_\.@&']{3,40}?)(?:\s*[.,]|\s*$)/i,
+    /UPI[:\s-]*\d+\s+to\s+([A-Za-z][A-Za-z0-9\s\-_\.@&']{2,35})/i,
+  ];
+  for(const rx of merchantRx){
+    const m = t.match(rx);
+    if(m && m[1] && m[1].trim().length > 1){
+      merchant = m[1].trim().replace(/\s+/g,' ');
+      break;
+    }
+  }
+
+  const cat = detectCategoryFromText((merchant||'') + ' ' + t);
+  return {amount, note: merchant||'', cat, isDebit:true};
+}
+
+async function parseSMSWithAI(smsText, apiKey){
+  const resp = await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 200,
+      messages:[{
+        role:'user',
+        content:`Parse this Indian bank SMS and extract expense details. Return ONLY valid JSON with: amount (number, the rupee amount debited/paid), note (string, merchant or short description, max 40 chars), cat (one of: bills,food,travel,petrol,emi,sip,subs,iphone,shopping,health,entertainment,other), isDebit (boolean, false if this is a credit/refund). SMS: "${smsText.replace(/"/g,"'")}"`
+      }]
+    })
+  });
+  if(!resp.ok) throw new Error('API '+resp.status);
+  const data = await resp.json();
+  const raw = data.content[0].text.trim();
+  const match = raw.match(/\{[\s\S]*\}/);
+  if(!match) throw new Error('No JSON');
+  return JSON.parse(match[0]);
+}
+
+let _parsedSMS = null;
+
+async function parseSMS(){
+  const smsText = document.getElementById('smsText').value.trim();
+  if(!smsText){ toast('Paste an SMS first','error'); return; }
+
+  const btn = document.getElementById('smsParseBtn');
+  const area = document.getElementById('smsResultArea');
+  btn.textContent = '⏳ Parsing…';
+  btn.disabled = true;
+  area.style.display = 'none';
+  _parsedSMS = null;
+
+  const apiKey = localStorage.getItem('financeOS_apiKey');
+  let result;
+  try{
+    if(apiKey){
+      result = await parseSMSWithAI(smsText, apiKey);
+      document.getElementById('smsPoweredBy').textContent = '✦ parsed by Claude AI';
+    } else {
+      result = parseSMSWithRegex(smsText);
+      document.getElementById('smsPoweredBy').textContent = '✦ regex parser · add Claude API key in Settings for AI';
+    }
+  }catch(e){
+    // fallback
+    result = parseSMSWithRegex(smsText);
+    document.getElementById('smsPoweredBy').textContent = '✦ AI unavailable — used regex fallback';
+  }
+
+  btn.textContent = '🔍 Parse SMS';
+  btn.disabled = false;
+  area.style.display = 'block';
+
+  if(result.error){
+    area.innerHTML = `<div class="sms-msg err">${result.error}</div>`;
+    return;
+  }
+  if(result.isDebit === false){
+    area.innerHTML = `<div class="sms-msg warn">This looks like a credit / refund — skipping.</div>`;
+    return;
+  }
+
+  _parsedSMS = result;
+  const m = CAT_META[result.cat]||CAT_META.other;
+  area.innerHTML = `
+    <div class="sms-result-box">
+      <div class="sms-result-row"><span class="sms-result-label">Amount</span><span style="color:${m.color};font-weight:800">${fmt(result.amount)}</span></div>
+      <div class="sms-result-row"><span class="sms-result-label">Category</span><span>${m.icon} ${m.label}</span></div>
+      ${result.note?`<div class="sms-result-row"><span class="sms-result-label">Merchant</span><span style="color:var(--text)">${result.note}</span></div>`:''}
+    </div>
+    <button class="sms-stage-detected" onclick="stageFromSMS()">Stage for Review →</button>
+  `;
+}
+
+function stageFromSMS(){
+  if(!_parsedSMS) return;
+  if(!state.pending) state.pending = [];
+  state.pending.push({id:Date.now(), cat:_parsedSMS.cat, amt:_parsedSMS.amount, note:_parsedSMS.note||'', ts:new Date().toISOString()});
+  save();
+  _parsedSMS = null;
+  document.getElementById('smsText').value = '';
+  document.getElementById('smsResultArea').style.display = 'none';
+  renderTracker();
+  toast('Staged from SMS ✓','success');
+}
+
+function checkSharedSMS(){
+  const params = new URLSearchParams(window.location.search);
+  const shared = params.get('text') || params.get('sms');
+  if(!shared) return;
+  history.replaceState({},'',window.location.pathname);
+  const decoded = decodeURIComponent(shared);
+  document.getElementById('smsText').value = decoded;
+  showScreen('tracker', document.querySelectorAll('.nav-btn')[1]);
+  toast('SMS received — tap Parse to extract expense','');
+}
+
+// ═══════════════════════════════════════
 //  SETTINGS
 // ═══════════════════════════════════════
 function syncSettingsUI(){
@@ -984,6 +1202,8 @@ function syncSettingsUI(){
   document.getElementById('setIphone').value = s.iphoneGoal;
   document.getElementById('setSavings').value = s.savings;
   document.getElementById('setSaveMo').value = s.saveMo;
+  const k = localStorage.getItem('financeOS_apiKey');
+  if(k) document.getElementById('setApiKey').value = k;
 }
 
 function saveSettings(){
@@ -1001,6 +1221,11 @@ function saveSettings(){
     savings:   parseInt(document.getElementById('setSavings').value)||30000,
     saveMo:    parseInt(document.getElementById('setSaveMo').value)||4000,
   };
+  const apiKey = document.getElementById('setApiKey').value.trim();
+  if(apiKey) localStorage.setItem('financeOS_apiKey', apiKey);
+  else localStorage.removeItem('financeOS_apiKey');
+  const powered = document.getElementById('smsPoweredBy');
+  if(powered) powered.textContent = apiKey ? '✦ Claude AI ready' : '✦ regex parser · add Claude API key in Settings for AI';
   save();
   toast('Settings saved ✓','success');
   renderDashboard();
@@ -1065,6 +1290,7 @@ if('serviceWorker' in navigator){
 // ═══════════════════════════════════════
 load();
 renderDashboard();
+checkSharedSMS();
 </script>
 </body>
 </html>
