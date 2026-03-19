@@ -5,7 +5,7 @@ pages_build_output_dir = "."
 [[d1_databases]]
 binding = "DB"
 database_name = "finance-os-db"
-database_id = "FILL_AFTER_wrangler_d1_create"
+database_id = "62ca192e-7dbc-4a37-946c-c7d9c858816e"
 
 # Secrets — set via CLI once, never commit:
 # wrangler secret put SESSION_SECRET
