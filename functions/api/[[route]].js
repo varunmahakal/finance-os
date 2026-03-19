@@ -6,7 +6,10 @@
 //  CRYPTO HELPERS
 // ═══════════════════════════════════════
 
-const PBKDF2_ITERATIONS = 310_000;
+// 10,000 iterations keeps CPU time well under Cloudflare Workers' 10ms free-plan limit.
+// Security model: PIN is a UI gate on a personal single-user app; SESSION_SECRET
+// protects server-side token forgery regardless of PIN hash strength.
+const PBKDF2_ITERATIONS = 10_000;
 
 function hexToBytes(hex) {
   const arr = new Uint8Array(hex.length / 2);
@@ -270,35 +273,53 @@ async function handleMigrate(request, env) {
 // ═══════════════════════════════════════
 
 export async function onRequest(context) {
-  const { request, env } = context;
-  const url = new URL(request.url);
-  const path = url.pathname;
-  const method = request.method;
+  try {
+    const { request, env } = context;
+    const url = new URL(request.url);
+    const path = url.pathname;
+    const method = request.method;
 
-  // CORS preflight (useful during local dev with wrangler pages dev)
-  if (method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      }
+    // CORS preflight (useful during local dev with wrangler pages dev)
+    if (method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type'
+        }
+      });
+    }
+
+    // Health check — no bindings needed, useful for diagnosing missing bindings
+    if (path === '/api/health') {
+      return json({
+        ok: true,
+        hasDB: !!env.DB,
+        hasSecret: !!env.SESSION_SECRET,
+        bindings: Object.keys(env).filter(k => !k.startsWith('CF_'))
+      });
+    }
+
+    // ── Unauthenticated auth routes ──
+    if (path === '/api/auth/setup' && method === 'POST') return handleSetup(request, env);
+    if (path === '/api/auth/login' && method === 'POST')  return handleLogin(request, env);
+    if (path === '/api/auth/logout' && method === 'POST') return handleLogout();
+
+    // ── Session-protected routes ──
+    const session = await requireAuth(request, env);
+    if (session instanceof Response) return session; // 401
+
+    if (path === '/api/state' && method === 'GET') return handleGetState(env);
+    if (path === '/api/state' && method === 'PUT') return handlePutState(request, env);
+    if (path === '/api/migrate' && method === 'POST') return handleMigrate(request, env);
+
+    return json({ error: 'Not found' }, 404);
+  } catch (e) {
+    // Surface the real error instead of Cloudflare's generic 1101
+    return new Response(JSON.stringify({ error: 'Internal error', details: e.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
     });
   }
-
-  // ── Unauthenticated auth routes ──
-  if (path === '/api/auth/setup' && method === 'POST') return handleSetup(request, env);
-  if (path === '/api/auth/login' && method === 'POST')  return handleLogin(request, env);
-  if (path === '/api/auth/logout' && method === 'POST') return handleLogout();
-
-  // ── Session-protected routes ──
-  const session = await requireAuth(request, env);
-  if (session instanceof Response) return session; // 401
-
-  if (path === '/api/state' && method === 'GET') return handleGetState(env);
-  if (path === '/api/state' && method === 'PUT') return handlePutState(request, env);
-  if (path === '/api/migrate' && method === 'POST') return handleMigrate(request, env);
-
-  return json({ error: 'Not found' }, 404);
 }
