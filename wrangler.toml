@@ -1,0 +1,12 @@
+name = "finance-os"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "finance-os-db"
+database_id = "FILL_AFTER_wrangler_d1_create"
+
+# Secrets — set via CLI once, never commit:
+# wrangler secret put SESSION_SECRET
+#   generate value with: openssl rand -hex 32

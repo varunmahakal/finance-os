@@ -248,6 +248,22 @@ select.form-input option{background:var(--s3);}
 </head>
 <body>
 
+<!-- ── LOGIN OVERLAY ── -->
+<div id="loginOverlay" style="position:fixed;inset:0;z-index:999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;">
+  <div style="background:var(--s1);border:1px solid var(--border2);border-radius:20px;padding:32px 24px;width:100%;max-width:340px;text-align:center;">
+    <div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;font-size:1.6rem;margin:0 auto 14px;">₹</div>
+    <div style="font-size:1.2rem;font-weight:800;letter-spacing:-0.02em;font-family:var(--sans);">Finance OS</div>
+    <div id="loginTitle" style="font-size:0.55rem;font-family:var(--mono);color:var(--muted);letter-spacing:0.12em;margin-top:4px;margin-bottom:28px;">ENTER PIN TO CONTINUE</div>
+    <!-- PIN dot indicators -->
+    <div id="pinDots" style="display:flex;gap:14px;justify-content:center;margin-bottom:28px;"></div>
+    <!-- Numeric keypad -->
+    <div id="pinPad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:240px;margin:0 auto;"></div>
+    <!-- Error -->
+    <div id="loginError" style="font-family:var(--mono);font-size:0.65rem;color:var(--red);margin-top:16px;min-height:1.1em;"></div>
+  </div>
+  <div id="setupHint" style="font-family:var(--mono);font-size:0.58rem;color:var(--muted);margin-top:20px;text-align:center;line-height:1.7;max-width:300px;"></div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -501,6 +517,14 @@ select.form-input option{background:var(--s3);}
     </div>
     <button class="save-settings-btn" onclick="saveSettings()">💾 Save Settings</button>
     <button class="danger-btn" onclick="clearAllData()">🗑️ Clear All Data</button>
+
+    <!-- Cloud Migration (shown automatically when needed) -->
+    <div id="migrateGroup" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+      <div class="settings-title">Cloud Migration</div>
+      <div style="font-size:0.65rem;font-family:var(--mono);color:var(--muted);line-height:1.6;margin-bottom:8px;">One-time: push your existing local expenses to Cloudflare D1.</div>
+      <div id="migrateStatus" style="font-size:0.62rem;font-family:var(--mono);color:var(--muted);margin-bottom:8px;"></div>
+      <button id="migrateBtn" class="save-settings-btn" style="background:linear-gradient(135deg,var(--orange),var(--yellow));color:#05080f;" onclick="migrateLocalStorageToCloud()">Upload Local Data to Cloud →</button>
+    </div>
   </div>
 </div>
 
@@ -560,20 +584,40 @@ let state = {
   pending:[]   // staged but not yet confirmed: [{id,cat,amt,note,ts}]
 };
 
-function load(){
-  try{
-    const d = localStorage.getItem(STORE);
-    if(d){
-      const parsed = JSON.parse(d);
-      state = parsed;
-      if(!state.pending) state.pending = [];
-    }
-  }catch(e){}
+async function load(){
+  const resp = await fetch('/api/state');
+  if(resp.status === 401){ showLoginScreen(); return; }
+  if(!resp.ok){ toast('Failed to load data — check connection','error'); return; }
+  state = await resp.json();
+  if(!state.pending) state.pending = [];
   syncSettingsUI();
   updatePendBadge();
+  checkMigrationNeeded();
 }
+
+// Debounced async save — fire-and-forget with retry on network error
+let _saveTimer = null;
+let _saveInFlight = false;
 function save(){
-  localStorage.setItem(STORE, JSON.stringify(state));
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(flushSave, 800);
+}
+async function flushSave(){
+  if(_saveInFlight){ _saveTimer = setTimeout(flushSave, 400); return; }
+  _saveInFlight = true;
+  try{
+    const r = await fetch('/api/state',{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(state)
+    });
+    if(r.status === 401){ showLoginScreen(); }
+    else if(!r.ok){ toast('Sync error — retrying','error'); _saveTimer = setTimeout(flushSave, 3000); }
+  }catch(e){
+    _saveTimer = setTimeout(flushSave, 5000); // retry on network error
+  }finally{
+    _saveInFlight = false;
+  }
 }
 function fmt(n){ return '₹'+Math.round(n).toLocaleString('en-IN'); }
 
@@ -1432,11 +1476,158 @@ if('serviceWorker' in navigator){
 }
 
 // ═══════════════════════════════════════
+//  AUTH & MIGRATION
+// ═══════════════════════════════════════
+let _pinEntry = '';
+let _pinMode = 'login'; // 'login' | 'setup'
+
+function showLoginScreen(mode){
+  _pinMode = mode || 'login';
+  _pinEntry = '';
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('loginError').textContent = '';
+  document.getElementById('loginTitle').textContent =
+    _pinMode === 'setup' ? 'SET YOUR PIN' : 'ENTER PIN TO CONTINUE';
+  document.getElementById('setupHint').textContent =
+    _pinMode === 'setup'
+      ? 'Choose a 4–8 digit PIN to protect your Finance OS data.'
+      : '';
+  renderKeypad();
+  renderPinDots();
+}
+
+function hideLoginScreen(){
+  document.getElementById('loginOverlay').style.display = 'none';
+}
+
+function renderPinDots(){
+  const len = Math.max(4, _pinEntry.length);
+  document.getElementById('pinDots').innerHTML = Array.from({length: len}, (_, i) =>
+    `<div style="width:14px;height:14px;border-radius:50%;
+      background:${i < _pinEntry.length ? 'var(--blue)' : 'var(--muted2)'};
+      border:2px solid ${i < _pinEntry.length ? 'var(--blue)' : 'var(--border2)'};
+      transition:background 0.15s;"></div>`
+  ).join('');
+}
+
+function renderKeypad(){
+  const keys = ['1','2','3','4','5','6','7','8','9','⌫','0','✓'];
+  document.getElementById('pinPad').innerHTML = keys.map(k => {
+    const isBack = k === '⌫';
+    const isEnter = k === '✓';
+    const action = isBack ? 'pinBackspace()' : isEnter ? 'submitPin()' : `pinKey('${k}')`;
+    const color = isBack ? 'var(--red)' : isEnter ? 'var(--green)' : 'var(--text)';
+    const bg = isBack ? 'rgba(255,79,106,0.08)' : isEnter ? 'rgba(0,229,160,0.1)' : 'var(--s2)';
+    const border = isBack ? 'rgba(255,79,106,0.2)' : isEnter ? 'rgba(0,229,160,0.25)' : 'var(--border)';
+    return `<button onclick="${action}" style="
+      background:${bg};border:1px solid ${border};border-radius:12px;
+      color:${color};font-family:var(--mono);font-size:1.3rem;font-weight:700;
+      height:58px;cursor:pointer;transition:background 0.15s;
+      -webkit-tap-highlight-color:transparent;width:100%;">${k}</button>`;
+  }).join('');
+}
+
+function pinKey(digit){
+  if(_pinEntry.length >= 8) return;
+  _pinEntry += digit;
+  renderPinDots();
+  if(_pinEntry.length >= 4 && _pinMode === 'login') submitPin(); // auto-submit on 4 digits for login
+}
+
+function pinBackspace(){
+  _pinEntry = _pinEntry.slice(0, -1);
+  renderPinDots();
+  document.getElementById('loginError').textContent = '';
+}
+
+async function submitPin(){
+  const err = document.getElementById('loginError');
+  err.textContent = '';
+  if(_pinEntry.length < 4){ err.textContent = 'PIN must be at least 4 digits'; return; }
+
+  const endpoint = _pinMode === 'setup' ? '/api/auth/setup' : '/api/auth/login';
+  try{
+    const r = await fetch(endpoint, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ pin: _pinEntry })
+    });
+    const data = await r.json();
+    if(r.ok){
+      hideLoginScreen();
+      await load();
+      renderDashboard();
+      checkSharedSMS();
+    } else {
+      err.textContent = data.error || 'Failed — try again';
+      _pinEntry = '';
+      renderPinDots();
+    }
+  }catch(e){
+    err.textContent = 'Network error — try again';
+    _pinEntry = '';
+    renderPinDots();
+  }
+}
+
+function checkMigrationNeeded(){
+  const hasLocalData = !!localStorage.getItem(STORE);
+  const hasServerData = Object.keys(state.expenses || {}).length > 0 || (state.pending||[]).length > 0;
+  const group = document.getElementById('migrateGroup');
+  const status = document.getElementById('migrateStatus');
+  if(!group) return;
+  if(hasLocalData && !hasServerData){
+    group.style.display = 'block';
+    status.textContent = '⚠ Local data detected — upload it to cloud storage.';
+  } else if(hasLocalData && hasServerData){
+    group.style.display = 'block';
+    document.getElementById('migrateBtn').textContent = 'Overwrite Cloud with Local Data';
+    status.textContent = 'Cloud already has data. This will overwrite it with local data.';
+  }
+}
+
+async function migrateLocalStorageToCloud(){
+  const raw = localStorage.getItem(STORE);
+  if(!raw){ toast('No local data to migrate','error'); return; }
+  let localData;
+  try{ localData = JSON.parse(raw); }catch(e){ toast('Local data is corrupt','error'); return; }
+  const btn = document.getElementById('migrateBtn');
+  const status = document.getElementById('migrateStatus');
+  btn.textContent = 'Migrating…';
+  btn.disabled = true;
+  try{
+    const r = await fetch('/api/migrate',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(localData)
+    });
+    const data = await r.json();
+    if(r.ok){
+      toast(`Migrated ${data.expenseCount} expense${data.expenseCount!==1?'s':''} to cloud ✓`,'success');
+      btn.textContent = '✓ Migration Complete';
+      status.textContent = `${data.expenseCount} expenses now in Cloudflare D1.`;
+      document.getElementById('migrateGroup').style.display = 'none';
+    } else {
+      toast('Migration failed: '+(data.error||'unknown'),'error');
+      btn.textContent = 'Retry Migration';
+      btn.disabled = false;
+    }
+  }catch(e){
+    toast('Network error during migration','error');
+    btn.textContent = 'Retry Migration';
+    btn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════
-load();
-renderDashboard();
-checkSharedSMS();
+async function init(){
+  await load(); // load() calls showLoginScreen() on 401
+  renderDashboard();
+  checkSharedSMS();
+}
+init();
 </script>
 </body>
 </html>
